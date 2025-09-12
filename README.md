@@ -1,2 +1,3 @@
 # GPU_Watcher
-Faster than nvitop, lighter than nvitop too, but similar to nvitop capacities
+Alternative of nvitop.
+Faster than nvitop, lighter than nvitop too, but similar to nvitop capacities.
