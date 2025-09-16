@@ -14,7 +14,7 @@ from typing import Tuple
 import psutil
 import pandas as pd
 
-from datetime import datetime
+from datetime import datetime,timedelta
 
 try:
     import pynvml as N
@@ -50,6 +50,15 @@ def bytes2human(n: int) -> str:
         s += 1
     return f"{x:.1f}{units[s]}"
 
+def _runtime(pid):
+    try:
+        p = psutil.Process(pid)
+        create_time = p.create_time()  # 秒级时间戳
+        now = time.time()
+        delta = int(now - create_time)
+        return str(timedelta(seconds=delta))
+    except Exception:
+        return "?"
 
 def _safe(callable_, default=None, *args, **kwargs):
     try:
@@ -197,6 +206,7 @@ def gpu_snapshot(active_only=False, sort_by="mem", show_cmd=True, max_cmd_len=10
                     "Mem": bytes2human(mem_used) if isinstance(mem_used, int) else "NA",
                     "Mem %": (f"{mem_pct:.1f}" if isinstance(mem_pct, float) else "NA"),
                     "GPU %": (f"{sm_util:.0f}" if isinstance(sm_util, float) else "NA"),
+                    "Runtime": _runtime(pid) if pid is not None else "?",
                     "Cmd": _cmdline(pid, max_cmd_len, show_cmd) if pid is not None else "?",
                     "_mem_sort": mem_used if isinstance(mem_used, int) else -1
                 })
@@ -249,12 +259,12 @@ def make_tables():
     t1 = Table(expand=True, show_lines=False)
     t1.add_column("Idx", justify="center", no_wrap=True)
 #    t1.add_column("Name", justify="left", no_wrap=False, ratio=2)
-    t1.add_column("GPU Util", justify="left")
+    t1.add_column("GPU Utili", justify="left")
     t1.add_column("Memory", justify="left")
     t1.add_column("GPU %", justify="center")
     t1.add_column("Mem %", justify="center")
-    t1.add_column("Temp", justify="center")
-    t1.add_column("Power", justify="center")
+    # t1.add_column("Temp", justify="center")
+    # t1.add_column("Power", justify="center")
     # t1.add_column("P-St", justify="center")
     t1.add_column("Proc", justify="center")
 
@@ -266,8 +276,8 @@ def make_tables():
         mem_ratio = 100.0 * mem_used / mem_total if mem_total > 0 else 0.0
 
         color = "green" if util_gpu < 50 else "yellow" if util_gpu < 80 else "red"
-        util_bar = make_bar(util_gpu, width=24, color=color)
-        mem_bar = make_bar(mem_ratio, width=24, color="cyan")
+        util_bar = make_bar(util_gpu, width=100, color=color)
+        mem_bar = make_bar(mem_ratio, width=100, color="cyan")
 
         t1.add_row(
             str(idx),
@@ -276,8 +286,8 @@ def make_tables():
             mem_bar,
             str(util_gpu),
             str(int(mem_ratio)),
-            str(row.get("Temp", "NA")),
-            str(row.get("Power", "NA")),
+            # str(row.get("Temp", "NA")),
+            # str(row.get("Power", "NA")),
             # str(row.get("P-State", "NA")),
             str(row.get("Processes", 0)),
         )
@@ -293,7 +303,7 @@ def make_tables():
         for _, row in df_procs.iterrows():
             cells = [str(row[c]) for c in df_procs.columns]
             t2.add_row(*cells)
-    
+
     return t1, t2, df_gpus, df_procs
 
 
